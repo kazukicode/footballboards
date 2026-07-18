@@ -30,6 +30,7 @@ const createArcPoints = (cx: number, cy: number, radius: number, startAngle: num
 interface ArrowData {
   id: string;
   points: number[];
+  color: string;
 }
 
 interface TextData {
@@ -69,13 +70,14 @@ interface Project {
   title: string;
   createdAt: string;
   updatedAt: string;
-  data: { players: Player[]; arrows: ArrowData[]; texts: TextData[]; balls: BallData[]; pitchColor?: string; lineColor?: string; playerNumberColor?: string; playerNameColor?: string };
+  data: { players: Player[]; arrows: ArrowData[]; texts: TextData[]; balls: BallData[]; pitchColor?: string; lineColor?: string; arrowColor?: string; playerNumberColor?: string; playerNameColor?: string };
 }
 
 const App: React.FC = () => {
   const defaultPitchColor = '#ffffff';
   const defaultLineColor = '#000000';
   const defaultBallColor = '#000000';
+  const defaultArrowColor = '#ff0000';
   const defaultPlayerNumberColor = '#ffffff';
   const defaultPlayerNameColor = '#000000';
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
@@ -89,20 +91,28 @@ const App: React.FC = () => {
   const [ballColor, setBallColor] = useState(defaultBallColor);
   const [pitchColor, setPitchColor] = useState(defaultPitchColor);
   const [lineColor, setLineColor] = useState(defaultLineColor);
+  const [arrowColor, setArrowColor] = useState(defaultArrowColor);
   const [playerNumberColor, setPlayerNumberColor] = useState(defaultPlayerNumberColor);
   const [playerNameColor, setPlayerNameColor] = useState(defaultPlayerNameColor);
-  const [drawingArrow, setDrawingArrow] = useState<{ start: { x: number; y: number } | null }>({ start: null });
+  const [drawingArrow, setDrawingArrow] = useState<{ start: { x: number; y: number } | null; end: { x: number; y: number } | null }>({ start: null, end: null });
   const [balls, setBalls] = useState<BallData[]>([]);
+  const [previousState, setPreviousState] = useState<{ players: Player[]; arrows: ArrowData[]; texts: TextData[]; balls: BallData[]; pitchColor: string; lineColor: string; arrowColor: string; playerNumberColor: string; playerNameColor: string } | null>(null);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [dragGroupPositions, setDragGroupPositions] = useState<Record<string, any> | null>(null);
+  const [dragStartPoint, setDragStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [textInputValue, setTextInputValue] = useState('');
   const [textColor, setTextColor] = useState('#000000');
   const [textFontSize, setTextFontSize] = useState(16);
   const [textBold, setTextBold] = useState(false);
   const [selectionBox, setSelectionBox] = useState<SelectionBox>({ visible: false, x: 0, y: 0, width: 0, height: 0, startX: 0, startY: 0 });
   const [suppressNextStageClick, setSuppressNextStageClick] = useState(false);
-  const [mode, setMode] = useState<'select' | 'edit'>('select');
+  const [page, setPage] = useState<'landing' | 'newProject' | 'editor'>('landing');
   const [sidebarTab, setSidebarTab] = useState<'tools' | 'text' | 'colors' | 'file'>('tools');
+  const [newProjectForm, setNewProjectForm] = useState<{
+    title: string;
+    homePlayers: Array<{ id: string; x: number; y: number; number: number; name: string; team: 'home'; role: string }>;
+    awayPlayers: Array<{ id: string; x: number; y: number; number: number; name: string; team: 'away'; role: string }>;
+  } | null>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -123,7 +133,10 @@ const App: React.FC = () => {
         team: player.team ?? 'home',
         isSelected: false,
       })));
-      setArrows(currentProject.data.arrows);
+      setArrows(currentProject.data.arrows.map(arrow => ({
+        ...arrow,
+        color: arrow.color ?? currentProject.data.arrowColor ?? defaultArrowColor,
+      })));
       setTexts(currentProject.data.texts.map(text => ({
         ...text,
         color: text.color ?? '#000000',
@@ -136,6 +149,7 @@ const App: React.FC = () => {
       })) ?? []);
       setPitchColor(currentProject.data.pitchColor ?? defaultPitchColor);
       setLineColor(currentProject.data.lineColor ?? defaultLineColor);
+      setArrowColor(currentProject.data.arrowColor ?? defaultArrowColor);
       setPlayerNumberColor(currentProject.data.playerNumberColor ?? defaultPlayerNumberColor);
       setPlayerNameColor(currentProject.data.playerNameColor ?? defaultPlayerNameColor);
       setSelectedItems([]);
@@ -184,36 +198,168 @@ const App: React.FC = () => {
     setBalls([]);
     setPitchColor(defaultPitchColor);
     setLineColor(defaultLineColor);
+    setArrowColor(defaultArrowColor);
     setPlayerNumberColor(defaultPlayerNumberColor);
     setPlayerNameColor(defaultPlayerNameColor);
     setSelectedItems([]);
     setDragGroupPositions(null);
-    setDrawingArrow({ start: null });
+    setDragStartPoint(null);
+    setPreviousState(null);
+    setDrawingArrow({ start: null, end: null });
     setSelectionBox({ visible: false, x: 0, y: 0, width: 0, height: 0, startX: 0, startY: 0 });
   };
 
   const createNewProject = () => {
-    const title = prompt('新しいプロジェクトのタイトルを入力してください:');
-    if (!title) return;
-    const now = new Date().toISOString();
+    setPage('newProject');
+    setCurrentProject(null);
+    resetEditorState();
+    setNewProjectForm({
+      title: '',
+      homePlayers: [
+        { id: 'player-1', x: 100, y: 250, number: 1, team: 'home', name: '選手1', role: 'GK' },
+        { id: 'player-2', x: 220, y: 110, number: 2, team: 'home', name: '選手2', role: 'LSB' },
+        { id: 'player-3', x: 220, y: 190, number: 3, team: 'home', name: '選手3', role: 'CB' },
+        { id: 'player-4', x: 220, y: 310, number: 4, team: 'home', name: '選手4', role: 'CB' },
+        { id: 'player-5', x: 220, y: 390, number: 5, team: 'home', name: '選手5', role: 'RSB' },
+        { id: 'player-6', x: 360, y: 190, number: 6, team: 'home', name: '選手6', role: 'DMF' },
+        { id: 'player-7', x: 360, y: 310, number: 7, team: 'home', name: '選手7', role: 'DMF' },
+        { id: 'player-8', x: 360, y: 110, number: 8, team: 'home', name: '選手8', role: 'LMF' },
+        { id: 'player-9', x: 360, y: 390, number: 9, team: 'home', name: '選手9', role: 'RMF' },
+        { id: 'player-10', x: 520, y: 170, number: 10, team: 'home', name: '選手10', role: 'FW' },
+        { id: 'player-11', x: 520, y: 330, number: 11, team: 'home', name: '選手11', role: 'FW' },
+        { id: 'player-27', x: 80, y: pitchHeight + 30, number: 12, team: 'home', name: '選手12', role: '控え' },
+        { id: 'player-28', x: 140, y: pitchHeight + 30, number: 13, team: 'home', name: '選手13', role: '控え' },
+        { id: 'player-29', x: 200, y: pitchHeight + 30, number: 14, team: 'home', name: '選手14', role: '控え' },
+        { id: 'player-30', x: 260, y: pitchHeight + 30, number: 15, team: 'home', name: '選手15', role: '控え' },
+        { id: 'player-31', x: 320, y: pitchHeight + 30, number: 16, team: 'home', name: '選手16', role: '控え' },
+        { id: 'player-32', x: 80, y: pitchHeight + 70, number: 17, team: 'home', name: '選手17', role: '控え' },
+        { id: 'player-33', x: 140, y: pitchHeight + 70, number: 18, team: 'home', name: '選手18', role: '控え' },
+        { id: 'player-34', x: 200, y: pitchHeight + 70, number: 19, team: 'home', name: '選手19', role: '控え' },
+        { id: 'player-35', x: 260, y: pitchHeight + 70, number: 20, team: 'home', name: '選手20', role: '控え' },
+        { id: 'player-36', x: 320, y: pitchHeight + 70, number: 21, team: 'home', name: '選手21', role: '控え' },
+        { id: 'player-37', x: 80, y: pitchHeight + 110, number: 22, team: 'home', name: '選手22', role: '控え' },
+        { id: 'player-38', x: 140, y: pitchHeight + 110, number: 23, team: 'home', name: '選手23', role: '控え' },
+        { id: 'player-39', x: 200, y: pitchHeight + 110, number: 24, team: 'home', name: '選手24', role: '控え' },
+        { id: 'player-40', x: 260, y: pitchHeight + 110, number: 25, team: 'home', name: '選手25', role: '控え' },
+        { id: 'player-41', x: 320, y: pitchHeight + 110, number: 26, team: 'home', name: '選手26', role: '控え' },
+      ],
+      awayPlayers: [
+        { id: 'player-12', x: 700, y: 250, number: 1, team: 'away', name: '選手1', role: 'GK' },
+        { id: 'player-13', x: 580, y: 110, number: 2, team: 'away', name: '選手2', role: 'LSB' },
+        { id: 'player-14', x: 580, y: 190, number: 3, team: 'away', name: '選手3', role: 'CB' },
+        { id: 'player-15', x: 580, y: 310, number: 4, team: 'away', name: '選手4', role: 'CB' },
+        { id: 'player-16', x: 580, y: 390, number: 5, team: 'away', name: '選手5', role: 'RSB' },
+        { id: 'player-17', x: 440, y: 190, number: 6, team: 'away', name: '選手6', role: 'DMF' },
+        { id: 'player-18', x: 440, y: 310, number: 7, team: 'away', name: '選手7', role: 'DMF' },
+        { id: 'player-19', x: 440, y: 110, number: 8, team: 'away', name: '選手8', role: 'LMF' },
+        { id: 'player-20', x: 440, y: 390, number: 9, team: 'away', name: '選手9', role: 'RMF' },
+        { id: 'player-21', x: 280, y: 170, number: 10, team: 'away', name: '選手10', role: 'FW' },
+        { id: 'player-22', x: 280, y: 330, number: 11, team: 'away', name: '選手11', role: 'FW' },
+        { id: 'player-42', x: 480, y: pitchHeight + 30, number: 12, team: 'away', name: '選手12', role: '控え' },
+        { id: 'player-43', x: 540, y: pitchHeight + 30, number: 13, team: 'away', name: '選手13', role: '控え' },
+        { id: 'player-44', x: 600, y: pitchHeight + 30, number: 14, team: 'away', name: '選手14', role: '控え' },
+        { id: 'player-45', x: 660, y: pitchHeight + 30, number: 15, team: 'away', name: '選手15', role: '控え' },
+        { id: 'player-46', x: 720, y: pitchHeight + 30, number: 16, team: 'away', name: '選手16', role: '控え' },
+        { id: 'player-47', x: 480, y: pitchHeight + 70, number: 17, team: 'away', name: '選手17', role: '控え' },
+        { id: 'player-48', x: 540, y: pitchHeight + 70, number: 18, team: 'away', name: '選手18', role: '控え' },
+        { id: 'player-49', x: 600, y: pitchHeight + 70, number: 19, team: 'away', name: '選手19', role: '控え' },
+        { id: 'player-50', x: 660, y: pitchHeight + 70, number: 20, team: 'away', name: '選手20', role: '控え' },
+        { id: 'player-51', x: 720, y: pitchHeight + 70, number: 21, team: 'away', name: '選手21', role: '控え' },
+        { id: 'player-52', x: 480, y: pitchHeight + 110, number: 22, team: 'away', name: '選手22', role: '控え' },
+        { id: 'player-53', x: 540, y: pitchHeight + 110, number: 23, team: 'away', name: '選手23', role: '控え' },
+        { id: 'player-54', x: 600, y: pitchHeight + 110, number: 24, team: 'away', name: '選手24', role: '控え' },
+        { id: 'player-55', x: 660, y: pitchHeight + 110, number: 25, team: 'away', name: '選手25', role: '控え' },
+        { id: 'player-56', x: 720, y: pitchHeight + 110, number: 26, team: 'away', name: '選手26', role: '控え' },
+      ],
+    });
+  };
+
+  const updateNewProjectFormTitle = (value: string) => {
+    setNewProjectForm(prev => prev ? { ...prev, title: value } : prev);
+  };
+
+  const updateNewProjectFormPlayer = (team: string, id: string, field: 'number' | 'name', value: string) => {
+    setNewProjectForm(prev => {
+      if (!prev) return prev;
+      const playersKey = team === 'home' ? 'homePlayers' : 'awayPlayers';
+      const updated = prev[playersKey].map(player => (
+        player.id === id
+          ? { ...player, [field]: field === 'number' ? Math.max(1, Math.floor(Number(value) || 1)) : value }
+          : player
+      ));
+      return { ...prev, [playersKey]: updated } as typeof prev;
+    });
+  };
+
+  const cancelNewProjectForm = () => {
+    setNewProjectForm(null);
+    setPage('landing');
+  };
+
+  const submitNewProjectForm = () => {
+    if (!newProjectForm) return;
+    if (!newProjectForm.title.trim()) {
+      alert('タイトルを入力してください。');
+      return;
+    }
+
+    const playersList: Player[] = [...newProjectForm.homePlayers, ...newProjectForm.awayPlayers].map(player => ({
+      ...player,
+      name: player.name.trim() || `選手${player.number}`,
+      color: player.team === 'home' ? homeColor : awayColor,
+      isSelected: false,
+    }));
+
     const newProject: Project = {
       id: `project-${Date.now()}`,
-      title,
-      createdAt: now,
-      updatedAt: now,
-      data: { players: [], arrows: [], texts: [], balls: [] },
+      title: newProjectForm.title,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      data: { players: playersList, arrows: [], texts: [], balls: [], arrowColor: defaultArrowColor },
     };
+
     resetEditorState();
     setCurrentProject(newProject);
-    setProjectTitle(title);
-    setMode('edit');
+    setProjectTitle(newProjectForm.title);
+    setPage('editor');
+    setNewProjectForm(null);
   };
 
   const openProject = (project: Project) => {
     resetEditorState();
     setCurrentProject(project);
     setProjectTitle(project.title);
-    setMode('edit');
+    setPage('editor');
+  };
+
+  const captureStateSnapshot = () => {
+    setPreviousState({
+      players: players.map(player => ({ ...player })),
+      arrows: arrows.map(arrow => ({ ...arrow })),
+      texts: texts.map(text => ({ ...text })),
+      balls: balls.map(ball => ({ ...ball })),
+      pitchColor,
+      lineColor,
+      arrowColor,
+      playerNumberColor,
+      playerNameColor,
+    });
+  };
+
+  const undoLastAction = () => {
+    if (!previousState) return;
+    setPlayers(previousState.players);
+    setArrows(previousState.arrows);
+    setTexts(previousState.texts);
+    setBalls(previousState.balls);
+    setPitchColor(previousState.pitchColor);
+    setLineColor(previousState.lineColor);
+    setArrowColor(previousState.arrowColor);
+    setPlayerNumberColor(previousState.playerNumberColor);
+    setPlayerNameColor(previousState.playerNameColor);
+    setSelectedItems([]);
+    setDragGroupPositions(null);
+    setPreviousState(null);
   };
 
   const buildProjectSnapshot = (): Project | null => {
@@ -227,7 +373,7 @@ const App: React.FC = () => {
       ...currentProject,
       title,
       updatedAt: new Date().toISOString(),
-      data: { players, arrows, texts, balls, pitchColor, lineColor, playerNumberColor, playerNameColor },
+      data: { players, arrows, texts, balls, pitchColor, lineColor, arrowColor, playerNumberColor, playerNameColor },
     };
   };
 
@@ -318,6 +464,7 @@ const App: React.FC = () => {
   };
 
   const deleteSelectedItems = () => {
+    captureStateSnapshot();
     const selectedKeys = new Set(selectedItems.map(item => getSelectionKey(item.type, item.id)));
     setPlayers(prev => prev.filter(player => !selectedKeys.has(getSelectionKey('player', player.id))));
     setTexts(prev => prev.filter(text => !selectedKeys.has(getSelectionKey('text', text.id))));
@@ -335,12 +482,14 @@ const App: React.FC = () => {
     );
     if (selectedTextIds.size === 0) return;
 
+    captureStateSnapshot();
     setTexts(prev => prev.map(text => (
       selectedTextIds.has(text.id) ? { ...text, ...updates } : text
     )));
   };
 
   const prepareDragGroup = (currentType: SelectedItem['type'], currentId: string, stageX: number, stageY: number) => {
+    captureStateSnapshot();
     const selected = isSelectedItem(currentType, currentId) ? selectedItems : [{ type: currentType, id: currentId }];
     setSelectedItems(selected);
     const positions: Record<string, any> = {};
@@ -377,16 +526,18 @@ const App: React.FC = () => {
     });
 
     setDragGroupPositions(positions);
+    setDragStartPoint({ x: stageX, y: stageY });
   };
 
-  const handleGroupDragMove = (e: Konva.KonvaEventObject<DragEvent>, type: SelectedItem['type'], id: string) => {
-    if (!dragGroupPositions) return;
-    const dragKey = getSelectionKey(type, id);
-    const start = dragGroupPositions[dragKey];
-    if (!start) return;
+  const handleGroupDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
+    if (!dragGroupPositions || !dragStartPoint) return;
 
-    const dx = e.target.x() - start.x;
-    const dy = e.target.y() - start.y;
+    const stage = e.target.getStage();
+    const pos = stage?.getPointerPosition();
+    if (!pos) return;
+
+    const dx = pos.x - dragStartPoint.x;
+    const dy = pos.y - dragStartPoint.y;
     const selectedKeys = new Set(selectedItems.map(item => getSelectionKey(item.type, item.id)));
 
     setPlayers(prev => prev.map(player => {
@@ -416,14 +567,11 @@ const App: React.FC = () => {
       const origin = dragGroupPositions[getSelectionKey('ball', ball.id)];
       return origin ? { ...ball, x: origin.x + dx, y: origin.y + dy } : ball;
     }));
-
-    if (type === 'arrow') {
-      e.target.position({ x: 0, y: 0 });
-    }
   };
 
   const handleGroupDragEnd = () => {
     setDragGroupPositions(null);
+    setDragStartPoint(null);
   };
 
   const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -443,6 +591,7 @@ const App: React.FC = () => {
     }
 
     if (tool === 'playerHome' || tool === 'playerAway') {
+      captureStateSnapshot();
       const newPlayer: Player = {
         id: `player-${Date.now()}`,
         x: pos.x,
@@ -455,6 +604,7 @@ const App: React.FC = () => {
       };
       setPlayers([...players, newPlayer]);
     } else if (tool === 'ball') {
+      captureStateSnapshot();
       const newBall: BallData = {
         id: `ball-${Date.now()}`,
         x: pos.x,
@@ -463,6 +613,7 @@ const App: React.FC = () => {
       };
       setBalls([...balls, newBall]);
     } else if (tool === 'text') {
+      captureStateSnapshot();
       const textToAdd = textInputValue.trim() || 'テキスト';
       const newText: TextData = {
         id: `text-${Date.now()}`,
@@ -474,26 +625,22 @@ const App: React.FC = () => {
         fontStyle: textBold ? 'bold' : 'normal',
       };
       setTexts([...texts, newText]);
-    } else if (tool === 'arrow' && !drawingArrow.start) {
-      setDrawingArrow({ start: pos });
-    } else if (tool === 'arrow' && drawingArrow.start) {
-      const newArrow: ArrowData = {
-        id: `arrow-${Date.now()}`,
-        points: [drawingArrow.start.x, drawingArrow.start.y, pos.x, pos.y],
-      };
-      setArrows([...arrows, newArrow]);
-      setDrawingArrow({ start: null });
     }
   };
 
   const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (tool !== 'select') return;
     if (e.evt.button !== 0) return;
-    if (e.target.draggable()) return;
-
     const stage = e.target.getStage();
     const pos = stage?.getPointerPosition();
     if (!pos) return;
+
+    if (tool === 'arrow') {
+      setDrawingArrow({ start: pos, end: pos });
+      return;
+    }
+
+    if (tool !== 'select') return;
+    if (e.target.draggable()) return;
 
     setSelectionBox({
       visible: true,
@@ -507,11 +654,16 @@ const App: React.FC = () => {
   };
 
   const handleStageMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!selectionBox.visible) return;
-
     const stage = e.target.getStage();
     const pos = stage?.getPointerPosition();
     if (!pos) return;
+
+    if (drawingArrow.start) {
+      setDrawingArrow(prev => prev.start ? { ...prev, end: pos } : prev);
+      return;
+    }
+
+    if (!selectionBox.visible) return;
 
     const x = Math.min(selectionBox.startX, pos.x);
     const y = Math.min(selectionBox.startY, pos.y);
@@ -521,7 +673,23 @@ const App: React.FC = () => {
     setSelectionBox(prev => ({ ...prev, x, y, width, height }));
   };
 
-  const handleStageMouseUp = () => {
+  const handleStageMouseUp = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (drawingArrow.start) {
+      captureStateSnapshot();
+      const stage = e.target.getStage();
+      const pos = stage?.getPointerPosition();
+      if (pos) {
+        const newArrow: ArrowData = {
+          id: `arrow-${Date.now()}`,
+          points: [drawingArrow.start.x, drawingArrow.start.y, pos.x, pos.y],
+          color: arrowColor,
+        };
+        setArrows([...arrows, newArrow]);
+      }
+      setDrawingArrow({ start: null, end: null });
+      return;
+    }
+
     if (!selectionBox.visible) return;
 
     const hasDragged = selectionBox.width > 3 || selectionBox.height > 3;
@@ -549,6 +717,7 @@ const App: React.FC = () => {
 
   const handlePlayerDragEnd = (id: string, e: Konva.KonvaEventObject<DragEvent>) => {
     if (!dragGroupPositions) {
+      captureStateSnapshot();
       const newX = e.target.x();
       const newY = e.target.y();
       setPlayers(players.map(p => p.id === id ? { ...p, x: newX, y: newY } : p));
@@ -560,14 +729,12 @@ const App: React.FC = () => {
     handleGroupDragEnd();
   };
 
-  const handleArrowDragEnd = (_id: string, e: Konva.KonvaEventObject<DragEvent>) => {
-    if (dragGroupPositions) {
-      e.target.position({ x: 0, y: 0 });
-    }
+  const handleArrowDragEnd = (_id: string) => {
     handleGroupDragEnd();
   };
 
   const handleTextChange = (id: string, newText: string) => {
+    captureStateSnapshot();
     setTexts(texts.map(t => t.id === id ? { ...t, text: newText } : t));
   };
 
@@ -576,6 +743,7 @@ const App: React.FC = () => {
     if (!player) return;
     const newName = prompt('選手名を入力してください:', player.name);
     if (newName === null) return;
+    captureStateSnapshot();
     setPlayers(players.map(p => p.id === id ? { ...p, name: newName } : p));
   };
 
@@ -590,7 +758,9 @@ const App: React.FC = () => {
     if (!selectedSinglePlayer) return;
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) return;
-    const nextNumber = Math.max(1, Math.min(99, Math.floor(parsed)));
+    const nextNumber = Math.floor(parsed);
+    if (nextNumber < 1) return;
+    captureStateSnapshot();
     setPlayers(prev => prev.map(player => (
       player.id === selectedSinglePlayer.id ? { ...player, number: nextNumber } : player
     )));
@@ -598,6 +768,7 @@ const App: React.FC = () => {
 
   const updateSelectedPlayerName = (value: string) => {
     if (!selectedSinglePlayer) return;
+    captureStateSnapshot();
     setPlayers(prev => prev.map(player => (
       player.id === selectedSinglePlayer.id ? { ...player, name: value } : player
     )));
@@ -605,7 +776,7 @@ const App: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', padding: '0 36px', boxSizing: 'border-box' }}>
-      {mode === 'select' ? (
+      {page === 'landing' ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', padding: '20px 20px 64px', background: '#ffffff', color: '#111111', boxSizing: 'border-box' }}>
           <h1 style={{ marginBottom: '56px', fontSize: '48px', letterSpacing: '0.16em', fontWeight: 800, color: '#111111' }}>FOOTBALL BOARDS</h1>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -614,8 +785,68 @@ const App: React.FC = () => {
           </div>
           <input type="file" accept="application/json" ref={fileInputRef} onChange={handleImportFile} style={{ display: 'none' }} />
         </div>
+      ) : page === 'newProject' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', minHeight: '100vh', padding: '20px 20px 64px', background: '#ffffff', color: '#111111', boxSizing: 'border-box', overflowY: 'auto' }}>
+          <div style={{ width: '100%', maxWidth: 1100, background: '#f8fafc', border: '1px solid #d1d5db', borderRadius: '16px', padding: '24px', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div>
+                <div style={{ fontSize: '12px', color: '#6b7280', letterSpacing: '0.12em' }}>新規プロジェクト作成</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, marginTop: '6px' }}>ホーム/アウェイ選手入力</div>
+              </div>
+              <button onClick={cancelNewProjectForm} style={{ padding: '10px 16px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#ffffff', color: '#111827', cursor: 'pointer' }}>キャンセル</button>
+            </div>
+            <div style={{ display: 'grid', gap: '12px', marginBottom: '20px' }}>
+              <label style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>プロジェクト名</label>
+              <input
+                type="text"
+                value={newProjectForm?.title ?? ''}
+                onChange={(e) => updateNewProjectFormTitle(e.target.value)}
+                placeholder="プロジェクトタイトルを入力"
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#ffffff', color: '#111827', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              {['home', 'away'].map(team => {
+                const playersKey = team === 'home' ? 'homePlayers' : 'awayPlayers';
+                const title = team === 'home' ? 'ホーム' : 'アウェイ';
+                return (
+                  <div key={team} style={{ width: '100%', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '16px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px', color: '#111827' }}>{title}選手 ({newProjectForm?.[playersKey].length ?? 0}名)</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 200px', gap: '12px', padding: '8px 0', borderBottom: '1px solid #e5e7eb', fontSize: '12px', color: '#6b7280' }}>
+                      <div>背番号</div>
+                      <div>名前</div>
+                      <div>種別</div>
+                    </div>
+                    {newProjectForm?.[playersKey].map(player => (
+                      <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 200px', gap: '12px', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                        <input
+                          type="number"
+                          min={1}
+                          value={player.number}
+                          onChange={(e) => updateNewProjectFormPlayer(team, player.id, 'number', e.target.value)}
+                          style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#f9fafb', color: '#111827' }}
+                        />
+                        <input
+                          type="text"
+                          value={player.name}
+                          onChange={(e) => updateNewProjectFormPlayer(team, player.id, 'name', e.target.value)}
+                          style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#f9fafb', color: '#111827' }}
+                        />
+                        <div style={{ color: '#6b7280' }}>{player.role}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px' }}>
+              <button onClick={cancelNewProjectForm} style={{ padding: '12px 18px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#ffffff', color: '#111827', cursor: 'pointer' }}>キャンセル</button>
+              <button onClick={submitNewProjectForm} style={{ padding: '12px 18px', borderRadius: '10px', border: 'none', background: '#111827', color: '#ffffff', cursor: 'pointer' }}>作成</button>
+            </div>
+          </div>
+        </div>
       ) : (
-        <div style={{ display: 'flex', flex: 1, minHeight: '100vh', background: '#f3f5f8', alignItems: 'flex-start', gap: '16px' }}>
+        <div style={{ display: 'flex', flex: 1, minHeight: '100vh' }}>
           <div style={{ width: 260, flex: '0 0 260px', display: 'flex', flexDirection: 'column', gap: '10px', margin: '0' }}>
           <aside style={{ width: 260, background: '#141414', color: '#fff', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', minHeight: '100%' }}>
             <div>
@@ -637,6 +868,7 @@ const App: React.FC = () => {
                 <button onClick={() => setTool('ball')} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: tool === 'ball' ? '#4a4a4a' : '#1f1f1f', color: '#fff', cursor: 'pointer', textAlign: 'left' }}>ボール追加</button>
                 <button onClick={() => setTool('arrow')} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: tool === 'arrow' ? '#4a4a4a' : '#1f1f1f', color: '#fff', cursor: 'pointer', textAlign: 'left' }}>矢印追加</button>
                 <button onClick={() => setTool('text')} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: tool === 'text' ? '#4a4a4a' : '#1f1f1f', color: '#fff', cursor: 'pointer', textAlign: 'left' }}>文字追加</button>
+                <button onClick={undoLastAction} disabled={!previousState} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: previousState ? '#1976d2' : '#4a4a4a', color: '#fff', cursor: previousState ? 'pointer' : 'not-allowed', textAlign: 'left' }}>戻る</button>
                 {selectedSinglePlayer && (
                   <div style={{ display: 'grid', gap: '6px', marginTop: '8px', padding: '10px', borderRadius: '10px', background: '#1f1f1f', border: '1px solid #333333' }}>
                     <div style={{ fontSize: '12px', color: '#d1d5db' }}>選択中の選手を編集</div>
@@ -645,8 +877,8 @@ const App: React.FC = () => {
                       id="player-number-input"
                       type="number"
                       min={1}
-                      max={99}
                       value={selectedSinglePlayer.number}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => updateSelectedPlayerNumber(e.target.value)}
                       style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #3a3a3a', background: '#141414', color: '#ffffff' }}
                     />
@@ -660,6 +892,9 @@ const App: React.FC = () => {
                     />
                   </div>
                 )}
+                <button onClick={deleteSelectedItems} disabled={selectedItems.length === 0} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: selectedItems.length > 0 ? '#ff8f00' : '#9e9e9e', color: '#fff', cursor: selectedItems.length > 0 ? 'pointer' : 'not-allowed', marginTop: '12px' }}>
+                  選択項目を削除
+                </button>
               </div>
             )}
 
@@ -674,7 +909,7 @@ const App: React.FC = () => {
                     onChange={(e) => setTextInputValue(e.target.value)}
                     onFocus={() => setTool('text')}
                     placeholder="入力後、ピッチをクリック"
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #3a3a3a', background: '#1f1f1f', color: '#ffffff' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #3a3a3a', background: '#1f1f1f', color: '#ffffff', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ display: 'grid', gap: '6px' }}>
@@ -690,7 +925,7 @@ const App: React.FC = () => {
                       setTextFontSize(nextSize);
                       updateSelectedTextsStyle({ fontSize: nextSize });
                     }}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #3a3a3a', background: '#1f1f1f', color: '#ffffff' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #3a3a3a', background: '#1f1f1f', color: '#ffffff', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ display: 'grid', gap: '6px' }}>
@@ -747,6 +982,15 @@ const App: React.FC = () => {
                   }} style={{ width: '42px', height: '42px', border: 'none', padding: 0, cursor: 'pointer' }} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#fff', fontSize: '14px' }}>矢印色</span>
+                  <input
+                    type="color"
+                    value={arrowColor}
+                    onChange={(e) => setArrowColor(e.target.value)}
+                    style={{ width: '42px', height: '42px', border: 'none', padding: 0, cursor: 'pointer' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ color: '#fff', fontSize: '14px' }}>コート色</span>
                   <input
                     type="color"
@@ -791,14 +1035,11 @@ const App: React.FC = () => {
                 <button onClick={() => fileInputRef.current?.click()} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: '#5c6bc0', color: '#fff', cursor: 'pointer' }}>JSON読込</button>
                 <input type="file" accept="application/json" ref={fileInputRef} onChange={handleImportFile} style={{ display: 'none' }} />
                 <button onClick={() => { setPlayers([]); setArrows([]); setTexts([]); setBalls([]); setSelectedItems([]); }} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: '#d32f2f', color: '#fff', cursor: 'pointer' }}>クリア</button>
-                <button onClick={deleteSelectedItems} disabled={selectedItems.length === 0} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: selectedItems.length > 0 ? '#ff8f00' : '#9e9e9e', color: '#fff', cursor: selectedItems.length > 0 ? 'pointer' : 'not-allowed' }}>
-                  選択項目を削除
-                </button>
               </div>
             )}
             <div style={{ marginTop: 'auto', fontSize: '12px', color: '#7a7a7a' }}>JSON保存でファイルを書き出し、JSON読込で再編集できます。</div>
           </aside>
-          <button onClick={() => { setMode('select'); setCurrentProject(null); resetEditorState(); }} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: '#f5f5f5', border: '1px solid #d9d9d9', color: '#111111', cursor: 'pointer' }}>ホームへ戻る</button>
+          <button onClick={() => { setPage('landing'); setCurrentProject(null); resetEditorState(); }} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: '#f5f5f5', border: '1px solid #d9d9d9', color: '#111111', cursor: 'pointer' }}>ホームへ戻る</button>
           </div>
           <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '8px 24px 24px 50px', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', flex: 1 }}>
@@ -915,22 +1156,26 @@ const App: React.FC = () => {
                         y={ball.y}
                         draggable
                         onClick={(e) => handleSelectItem(e, 'ball', ball.id)}
-                        onDragStart={(e) => prepareDragGroup('ball', ball.id, e.target.x(), e.target.y())}
-                        onDragMove={(e) => handleGroupDragMove(e, 'ball', ball.id)}
+                        onDragStart={(e) => {
+                          const stage = e.target.getStage();
+                          const pos = stage?.getPointerPosition();
+                          prepareDragGroup('ball', ball.id, pos?.x ?? 0, pos?.y ?? 0);
+                        }}
+                        onDragMove={handleGroupDragMove}
                         onDragEnd={() => handleGroupDragEnd()}
                       >
-                        <Circle
-                          x={0}
-                          y={0}
-                          radius={14}
-                          fill={ball.color || ballColor}
-                          stroke="transparent"
+                        <Text
+                          x={-14}
+                          y={-16}
+                          text="⚽"
+                          fontSize={30}
+                          listening={false}
                         />
                         {isSelectedItem('ball', ball.id) && (
                           <Circle
                             x={0}
                             y={0}
-                            radius={16}
+                            radius={18}
                             stroke="#ffd600"
                             strokeWidth={2}
                           />
@@ -952,18 +1197,25 @@ const App: React.FC = () => {
                             e.cancelBubble = true;
                             handlePlayerNameChange(player.id);
                           }}
-                          onDragStart={(e) => prepareDragGroup('player', player.id, e.target.x(), e.target.y())}
-                          onDragMove={(e) => handleGroupDragMove(e, 'player', player.id)}
+                          onDragStart={(e) => {
+                            const stage = e.target.getStage();
+                            const pos = stage?.getPointerPosition();
+                            prepareDragGroup('player', player.id, pos?.x ?? 0, pos?.y ?? 0);
+                          }}
+                          onDragMove={handleGroupDragMove}
                           onDragEnd={(e) => handlePlayerDragEnd(player.id, e)}
                         />
                         <Text
-                          x={player.x - 10}
-                          y={player.y - 10}
-                          width={20}
+                          x={player.x - 20}
+                          y={player.y - 20}
+                          width={40}
+                          height={40}
                           text={player.number.toString()}
                           fontSize={14}
                           fill={playerNumberColor}
                           align="center"
+                          verticalAlign="middle"
+                          padding={0}
                           listening={false}
                         />
                         <Text
@@ -984,20 +1236,32 @@ const App: React.FC = () => {
                         points={arrow.points}
                         pointerLength={10}
                         pointerWidth={10}
-                        fill={isSelectedItem('arrow', arrow.id) ? '#ffd600' : 'red'}
-                        stroke={isSelectedItem('arrow', arrow.id) ? '#ffd600' : 'red'}
+                        fill={isSelectedItem('arrow', arrow.id) ? '#ffd600' : arrow.color}
+                        stroke={isSelectedItem('arrow', arrow.id) ? '#ffd600' : arrow.color}
                         strokeWidth={isSelectedItem('arrow', arrow.id) ? 4 : 3}
                         draggable
                         onClick={(e) => handleSelectItem(e, 'arrow', arrow.id)}
-                        onDragStart={() => {
-                          const stage = stageRef.current?.getStage();
+                        onDragStart={(e) => {
+                          const stage = e.target.getStage();
                           const pos = stage?.getPointerPosition();
                           prepareDragGroup('arrow', arrow.id, pos?.x ?? 0, pos?.y ?? 0);
                         }}
-                        onDragMove={(e) => handleGroupDragMove(e, 'arrow', arrow.id)}
-                        onDragEnd={(e) => handleArrowDragEnd(arrow.id, e)}
+                        onDragMove={handleGroupDragMove}
+                        onDragEnd={() => handleArrowDragEnd(arrow.id)}
                       />
                     ))}
+                    {drawingArrow.start && drawingArrow.end && (
+                      <Arrow
+                        points={[drawingArrow.start.x, drawingArrow.start.y, drawingArrow.end.x, drawingArrow.end.y]}
+                        pointerLength={10}
+                        pointerWidth={10}
+                        fill={arrowColor}
+                        stroke={arrowColor}
+                        strokeWidth={3}
+                        dash={[10, 6]}
+                        listening={false}
+                      />
+                    )}
                     {texts.map(textData => (
                       <Text
                         key={textData.id}
@@ -1011,8 +1275,12 @@ const App: React.FC = () => {
                         strokeWidth={isSelectedItem('text', textData.id) ? 1 : 0}
                         draggable
                         onClick={(e) => handleSelectItem(e, 'text', textData.id)}
-                        onDragStart={(e) => prepareDragGroup('text', textData.id, e.target.x(), e.target.y())}
-                        onDragMove={(e) => handleGroupDragMove(e, 'text', textData.id)}
+                        onDragStart={(e) => {
+                          const stage = e.target.getStage();
+                          const pos = stage?.getPointerPosition();
+                          prepareDragGroup('text', textData.id, pos?.x ?? 0, pos?.y ?? 0);
+                        }}
+                        onDragMove={handleGroupDragMove}
                         onDragEnd={() => handleTextDragEnd(textData.id)}
                         onDblClick={(e) => {
                           e.cancelBubble = true;
