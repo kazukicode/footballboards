@@ -50,8 +50,15 @@ interface BallData {
   color: string;
 }
 
+interface DrawStroke {
+  id: string;
+  points: number[];
+  color: string;
+  strokeWidth: number;
+}
+
 interface SelectedItem {
-  type: 'player' | 'arrow' | 'text' | 'ball';
+  type: 'player' | 'arrow' | 'text' | 'ball' | 'draw';
   id: string;
 }
 
@@ -70,7 +77,7 @@ interface Project {
   title: string;
   createdAt: string;
   updatedAt: string;
-  data: { players: Player[]; arrows: ArrowData[]; texts: TextData[]; balls: BallData[]; pitchColor?: string; lineColor?: string; arrowColor?: string; playerNumberColor?: string; playerNameColor?: string };
+  data: { players: Player[]; arrows: ArrowData[]; texts: TextData[]; balls: BallData[]; handDrawings?: DrawStroke[]; pitchColor?: string; lineColor?: string; arrowColor?: string; playerNumberColor?: string; playerNameColor?: string };
 }
 
 const App: React.FC = () => {
@@ -78,25 +85,31 @@ const App: React.FC = () => {
   const defaultLineColor = '#000000';
   const defaultBallColor = '#000000';
   const defaultArrowColor = '#ff0000';
+  const defaultPenColor = '#ff0000';
   const defaultPlayerNumberColor = '#ffffff';
   const defaultPlayerNameColor = '#000000';
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [arrows, setArrows] = useState<ArrowData[]>([]);
   const [texts, setTexts] = useState<TextData[]>([]);
+  const [drawStrokes, setDrawStrokes] = useState<DrawStroke[]>([]);
+  const [currentDrawStroke, setCurrentDrawStroke] = useState<DrawStroke | null>(null);
   const [projectTitle, setProjectTitle] = useState('');
-  const [tool, setTool] = useState<'playerHome' | 'playerAway' | 'arrow' | 'text' | 'ball' | 'select'>('select');
+  const [tool, setTool] = useState<'playerHome' | 'playerAway' | 'arrow' | 'text' | 'ball' | 'select' | 'draw' | 'eraser'>('select');
   const [homeColor, setHomeColor] = useState('#1976d2');
   const [awayColor, setAwayColor] = useState('#d32f2f');
   const [ballColor, setBallColor] = useState(defaultBallColor);
   const [pitchColor, setPitchColor] = useState(defaultPitchColor);
   const [lineColor, setLineColor] = useState(defaultLineColor);
   const [arrowColor, setArrowColor] = useState(defaultArrowColor);
+  const [penColor, setPenColor] = useState(defaultPenColor);
+  const [penWidth, setPenWidth] = useState(4);
+  const [eraserSize, setEraserSize] = useState(24);
   const [playerNumberColor, setPlayerNumberColor] = useState(defaultPlayerNumberColor);
   const [playerNameColor, setPlayerNameColor] = useState(defaultPlayerNameColor);
   const [drawingArrow, setDrawingArrow] = useState<{ start: { x: number; y: number } | null; end: { x: number; y: number } | null }>({ start: null, end: null });
   const [balls, setBalls] = useState<BallData[]>([]);
-  const [previousState, setPreviousState] = useState<{ players: Player[]; arrows: ArrowData[]; texts: TextData[]; balls: BallData[]; pitchColor: string; lineColor: string; arrowColor: string; playerNumberColor: string; playerNameColor: string } | null>(null);
+  const [previousState, setPreviousState] = useState<{ players: Player[]; arrows: ArrowData[]; texts: TextData[]; balls: BallData[]; drawStrokes: DrawStroke[]; pitchColor: string; lineColor: string; arrowColor: string; playerNumberColor: string; playerNameColor: string } | null>(null);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [dragGroupPositions, setDragGroupPositions] = useState<Record<string, any> | null>(null);
   const [dragStartPoint, setDragStartPoint] = useState<{ x: number; y: number } | null>(null);
@@ -146,6 +159,11 @@ const App: React.FC = () => {
       setBalls(currentProject.data.balls?.map(ball => ({
         ...ball,
         color: ball.color || defaultBallColor,
+      })) ?? []);
+      setDrawStrokes(currentProject.data.handDrawings?.map(stroke => ({
+        ...stroke,
+        color: stroke.color || defaultPenColor,
+        strokeWidth: stroke.strokeWidth || 4,
       })) ?? []);
       setPitchColor(currentProject.data.pitchColor ?? defaultPitchColor);
       setLineColor(currentProject.data.lineColor ?? defaultLineColor);
@@ -338,6 +356,7 @@ const App: React.FC = () => {
       arrows: arrows.map(arrow => ({ ...arrow })),
       texts: texts.map(text => ({ ...text })),
       balls: balls.map(ball => ({ ...ball })),
+      drawStrokes: drawStrokes.map(stroke => ({ ...stroke })),
       pitchColor,
       lineColor,
       arrowColor,
@@ -352,6 +371,7 @@ const App: React.FC = () => {
     setArrows(previousState.arrows);
     setTexts(previousState.texts);
     setBalls(previousState.balls);
+    setDrawStrokes(previousState.drawStrokes);
     setPitchColor(previousState.pitchColor);
     setLineColor(previousState.lineColor);
     setArrowColor(previousState.arrowColor);
@@ -373,7 +393,7 @@ const App: React.FC = () => {
       ...currentProject,
       title,
       updatedAt: new Date().toISOString(),
-      data: { players, arrows, texts, balls, pitchColor, lineColor, arrowColor, playerNumberColor, playerNameColor },
+      data: { players, arrows, texts, balls, handDrawings: drawStrokes, pitchColor, lineColor, arrowColor, playerNumberColor, playerNameColor },
     };
   };
 
@@ -590,6 +610,11 @@ const App: React.FC = () => {
       return;
     }
 
+    if (tool === 'eraser') {
+      eraseStrokesAtPoint(pos);
+      return;
+    }
+
     if (tool === 'playerHome' || tool === 'playerAway') {
       captureStateSnapshot();
       const newPlayer: Player = {
@@ -628,14 +653,45 @@ const App: React.FC = () => {
     }
   };
 
-  const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (e.evt.button !== 0) return;
+  const getStagePointerPosition = (e: Konva.KonvaEventObject<any>) => {
     const stage = e.target.getStage();
-    const pos = stage?.getPointerPosition();
-    if (!pos) return;
+    return stage?.getPointerPosition() ?? null;
+  };
+
+  const eraseStrokesAtPoint = (point: { x: number; y: number }) => {
+    setDrawStrokes(prev => prev.filter(stroke => {
+      const hit = stroke.points.some((_, index) => {
+        if (index % 2 !== 0) return false;
+        const dx = stroke.points[index] - point.x;
+        const dy = stroke.points[index + 1] - point.y;
+        return Math.hypot(dx, dy) <= eraserSize;
+      });
+      return !hit;
+    }));
+  };
+
+  const handleStageDrawStart = (e: Konva.KonvaEventObject<any>) => {
+    const pointerPos = getStagePointerPosition(e);
+    if (!pointerPos) return;
+
+    if (tool === 'eraser') {
+      captureStateSnapshot();
+      eraseStrokesAtPoint(pointerPos);
+      return;
+    }
 
     if (tool === 'arrow') {
-      setDrawingArrow({ start: pos, end: pos });
+      setDrawingArrow({ start: pointerPos, end: pointerPos });
+      return;
+    }
+
+    if (tool === 'draw') {
+      setCurrentDrawStroke({
+        id: `draw-${Date.now()}`,
+        points: [pointerPos.x, pointerPos.y],
+        color: penColor,
+        strokeWidth: penWidth,
+      });
       return;
     }
 
@@ -644,39 +700,56 @@ const App: React.FC = () => {
 
     setSelectionBox({
       visible: true,
-      x: pos.x,
-      y: pos.y,
+      x: pointerPos.x,
+      y: pointerPos.y,
       width: 0,
       height: 0,
-      startX: pos.x,
-      startY: pos.y,
+      startX: pointerPos.x,
+      startY: pointerPos.y,
     });
   };
 
-  const handleStageMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    const stage = e.target.getStage();
-    const pos = stage?.getPointerPosition();
-    if (!pos) return;
+  const handleStageDrawMove = (e: Konva.KonvaEventObject<any>) => {
+    const pointerPos = getStagePointerPosition(e);
+    if (!pointerPos) return;
+
+    if (tool === 'eraser') {
+      const isTouch = String(e.evt.type).startsWith('touch');
+      const isMousePressed = e.evt.buttons === 1;
+      if (isTouch || isMousePressed) {
+        eraseStrokesAtPoint(pointerPos);
+      }
+      return;
+    }
 
     if (drawingArrow.start) {
-      setDrawingArrow(prev => prev.start ? { ...prev, end: pos } : prev);
+      setDrawingArrow(prev => prev.start ? { ...prev, end: pointerPos } : prev);
+      return;
+    }
+
+    if (currentDrawStroke) {
+      setCurrentDrawStroke(prev => prev ? { ...prev, points: [...prev.points, pointerPos.x, pointerPos.y] } : prev);
       return;
     }
 
     if (!selectionBox.visible) return;
 
-    const x = Math.min(selectionBox.startX, pos.x);
-    const y = Math.min(selectionBox.startY, pos.y);
-    const width = Math.abs(pos.x - selectionBox.startX);
-    const height = Math.abs(pos.y - selectionBox.startY);
+    const x = Math.min(selectionBox.startX, pointerPos.x);
+    const y = Math.min(selectionBox.startY, pointerPos.y);
+    const width = Math.abs(pointerPos.x - selectionBox.startX);
+    const height = Math.abs(pointerPos.y - selectionBox.startY);
 
     setSelectionBox(prev => ({ ...prev, x, y, width, height }));
   };
 
-  const handleStageMouseUp = (e: Konva.KonvaEventObject<MouseEvent>) => {
+  const handleStageDrawEnd = () => {
+    if (tool === 'eraser') {
+      return;
+    }
+
     if (drawingArrow.start) {
       captureStateSnapshot();
-      const stage = e.target.getStage();
+      const stage = stageRef.current;
       const pos = stage?.getPointerPosition();
       if (pos) {
         const newArrow: ArrowData = {
@@ -687,6 +760,13 @@ const App: React.FC = () => {
         setArrows([...arrows, newArrow]);
       }
       setDrawingArrow({ start: null, end: null });
+      return;
+    }
+
+    if (currentDrawStroke) {
+      captureStateSnapshot();
+      setDrawStrokes(prev => [...prev, currentDrawStroke]);
+      setCurrentDrawStroke(null);
       return;
     }
 
@@ -713,6 +793,19 @@ const App: React.FC = () => {
     }
 
     setSelectionBox({ visible: false, x: 0, y: 0, width: 0, height: 0, startX: 0, startY: 0 });
+  };
+
+  const handleStageMouseDown = (e: Konva.KonvaEventObject<any>) => {
+    if (e.evt.button !== undefined && e.evt.button !== 0) return;
+    handleStageDrawStart(e);
+  };
+
+  const handleStageMouseMove = (e: Konva.KonvaEventObject<any>) => {
+    handleStageDrawMove(e);
+  };
+
+  const handleStageMouseUp = (_e: Konva.KonvaEventObject<any>) => {
+    handleStageDrawEnd();
   };
 
   const handlePlayerDragEnd = (id: string, e: Konva.KonvaEventObject<DragEvent>) => {
@@ -867,6 +960,8 @@ const App: React.FC = () => {
                 <button onClick={() => setTool('playerAway')} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: tool === 'playerAway' ? '#4a4a4a' : '#1f1f1f', color: '#fff', cursor: 'pointer', textAlign: 'left' }}>アウェイ選手追加</button>
                 <button onClick={() => setTool('ball')} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: tool === 'ball' ? '#4a4a4a' : '#1f1f1f', color: '#fff', cursor: 'pointer', textAlign: 'left' }}>ボール追加</button>
                 <button onClick={() => setTool('arrow')} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: tool === 'arrow' ? '#4a4a4a' : '#1f1f1f', color: '#fff', cursor: 'pointer', textAlign: 'left' }}>矢印追加</button>
+                <button onClick={() => setTool('draw')} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: tool === 'draw' ? '#4a4a4a' : '#1f1f1f', color: '#fff', cursor: 'pointer', textAlign: 'left' }}>手書き</button>
+                <button onClick={() => setTool('eraser')} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: tool === 'eraser' ? '#4a4a4a' : '#1f1f1f', color: '#fff', cursor: 'pointer', textAlign: 'left' }}>消しゴム</button>
                 <button onClick={() => setTool('text')} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: tool === 'text' ? '#4a4a4a' : '#1f1f1f', color: '#fff', cursor: 'pointer', textAlign: 'left' }}>文字追加</button>
                 <button onClick={undoLastAction} disabled={!previousState} style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', background: previousState ? '#1976d2' : '#4a4a4a', color: '#fff', cursor: previousState ? 'pointer' : 'not-allowed', textAlign: 'left' }}>戻る</button>
                 {selectedSinglePlayer && (
@@ -991,6 +1086,41 @@ const App: React.FC = () => {
                   />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#fff', fontSize: '14px' }}>手書き色</span>
+                  <input
+                    type="color"
+                    value={penColor}
+                    onChange={(e) => setPenColor(e.target.value)}
+                    style={{ width: '42px', height: '42px', border: 'none', padding: 0, cursor: 'pointer' }}
+                  />
+                </div>
+                <div style={{ display: 'grid', gap: '6px' }}>
+                  <label htmlFor="pen-width" style={{ color: '#d1d5db', fontSize: '12px' }}>手書き線の太さ</label>
+                  <input
+                    id="pen-width"
+                    type="range"
+                    min={1}
+                    max={16}
+                    value={penWidth}
+                    onChange={(e) => setPenWidth(Number(e.target.value))}
+                    style={{ width: '100%' }}
+                  />
+                  <div style={{ color: '#fff', fontSize: '12px' }}>{penWidth}px</div>
+                </div>
+                <div style={{ display: 'grid', gap: '6px' }}>
+                  <label htmlFor="eraser-size" style={{ color: '#d1d5db', fontSize: '12px' }}>消しゴムサイズ</label>
+                  <input
+                    id="eraser-size"
+                    type="range"
+                    min={8}
+                    max={64}
+                    value={eraserSize}
+                    onChange={(e) => setEraserSize(Number(e.target.value))}
+                    style={{ width: '100%' }}
+                  />
+                  <div style={{ color: '#fff', fontSize: '12px' }}>{eraserSize}px</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ color: '#fff', fontSize: '14px' }}>コート色</span>
                   <input
                     type="color"
@@ -1048,7 +1178,7 @@ const App: React.FC = () => {
                   <div>
                     <div style={{ fontSize: '14px', color: '#333' }}>現在の編集モード</div>
                     <div style={{ marginTop: '6px', fontSize: '18px', fontWeight: 700 }}>
-                      {tool === 'select' ? '選択' : tool === 'playerHome' ? 'ホーム選手追加' : tool === 'playerAway' ? 'アウェイ選手追加' : tool === 'ball' ? 'ボール追加' : tool === 'arrow' ? '矢印追加' : '文字追加'}
+                      {tool === 'select' ? '選択' : tool === 'playerHome' ? 'ホーム選手追加' : tool === 'playerAway' ? 'アウェイ選手追加' : tool === 'ball' ? 'ボール追加' : tool === 'arrow' ? '矢印追加' : tool === 'draw' ? '手書き' : tool === 'eraser' ? '消しゴム' : '文字追加'}
                     </div>
                   </div>
                   <div style={{ fontSize: '12px', color: '#666' }}>作成日時: {currentProject ? new Date(currentProject.createdAt).toLocaleString() : '-'}</div>
@@ -1061,6 +1191,9 @@ const App: React.FC = () => {
                   onMouseDown={handleStageMouseDown}
                   onMouseMove={handleStageMouseMove}
                   onMouseUp={handleStageMouseUp}
+                  onTouchStart={handleStageMouseDown}
+                  onTouchMove={handleStageMouseMove}
+                  onTouchEnd={handleStageMouseUp}
                   style={{ border: '1px solid #cfd8dc', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', background: '#f3f5f8' }}
                 >
                   <Layer>
@@ -1259,6 +1392,29 @@ const App: React.FC = () => {
                         stroke={arrowColor}
                         strokeWidth={3}
                         dash={[10, 6]}
+                        listening={false}
+                      />
+                    )}
+                    {drawStrokes.map(stroke => (
+                      <Line
+                        key={stroke.id}
+                        points={stroke.points}
+                        stroke={stroke.color}
+                        strokeWidth={stroke.strokeWidth}
+                        lineCap="round"
+                        lineJoin="round"
+                        tension={0.5}
+                        listening={false}
+                      />
+                    ))}
+                    {currentDrawStroke && (
+                      <Line
+                        points={currentDrawStroke.points}
+                        stroke={currentDrawStroke.color}
+                        strokeWidth={currentDrawStroke.strokeWidth}
+                        lineCap="round"
+                        lineJoin="round"
+                        tension={0.5}
                         listening={false}
                       />
                     )}
