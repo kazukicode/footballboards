@@ -3,6 +3,14 @@ body {
   font-family: Arial, sans-serif;
 }
 
+.konvajs-content,
+.konvajs-content canvas {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
   @media (max-width: 1024px) {
     border-right: none;
     border-bottom: 1px solid var(--border);

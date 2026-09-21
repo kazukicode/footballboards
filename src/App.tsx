@@ -598,6 +598,51 @@ const App: React.FC = () => {
     setDragStartPoint(null);
   };
 
+  const addItemAtPosition = (pos: { x: number; y: number }) => {
+    if (tool === 'playerHome' || tool === 'playerAway') {
+      captureStateSnapshot();
+      const newPlayer: Player = {
+        id: `player-${Date.now()}`,
+        x: pos.x,
+        y: pos.y,
+        number: players.length + 1,
+        name: `選手${players.length + 1}`,
+        color: tool === 'playerHome' ? homeColor : awayColor,
+        team: tool === 'playerHome' ? 'home' : 'away',
+        isSelected: false,
+      };
+      setPlayers([...players, newPlayer]);
+      return;
+    }
+
+    if (tool === 'ball') {
+      captureStateSnapshot();
+      const newBall: BallData = {
+        id: `ball-${Date.now()}`,
+        x: pos.x,
+        y: pos.y,
+        color: ballColor,
+      };
+      setBalls([...balls, newBall]);
+      return;
+    }
+
+    if (tool === 'text') {
+      captureStateSnapshot();
+      const textToAdd = textInputValue.trim() || 'テキスト';
+      const newText: TextData = {
+        id: `text-${Date.now()}`,
+        x: pos.x,
+        y: pos.y,
+        text: textToAdd,
+        color: textColor,
+        fontSize: textFontSize,
+        fontStyle: textBold ? 'bold' : 'normal',
+      };
+      setTexts([...texts, newText]);
+    }
+  };
+
   const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
     if (suppressNextStageClick) {
       setSuppressNextStageClick(false);
@@ -619,41 +664,9 @@ const App: React.FC = () => {
       return;
     }
 
-    if (tool === 'playerHome' || tool === 'playerAway') {
-      captureStateSnapshot();
-      const newPlayer: Player = {
-        id: `player-${Date.now()}`,
-        x: pos.x,
-        y: pos.y,
-        number: players.length + 1,
-        name: `選手${players.length + 1}`,
-        color: tool === 'playerHome' ? homeColor : awayColor,
-        team: tool === 'playerHome' ? 'home' : 'away',
-        isSelected: false,
-      };
-      setPlayers([...players, newPlayer]);
-    } else if (tool === 'ball') {
-      captureStateSnapshot();
-      const newBall: BallData = {
-        id: `ball-${Date.now()}`,
-        x: pos.x,
-        y: pos.y,
-        color: ballColor,
-      };
-      setBalls([...balls, newBall]);
-    } else if (tool === 'text') {
-      captureStateSnapshot();
-      const textToAdd = textInputValue.trim() || 'テキスト';
-      const newText: TextData = {
-        id: `text-${Date.now()}`,
-        x: pos.x,
-        y: pos.y,
-        text: textToAdd,
-        color: textColor,
-        fontSize: textFontSize,
-        fontStyle: textBold ? 'bold' : 'normal',
-      };
-      setTexts([...texts, newText]);
+    if (tool === 'playerHome' || tool === 'playerAway' || tool === 'ball' || tool === 'text') {
+      addItemAtPosition(pos);
+      return;
     }
   };
 
@@ -800,7 +813,18 @@ const App: React.FC = () => {
   };
 
   const handleStageMouseDown = (e: Konva.KonvaEventObject<any>) => {
+    if (e.evt.preventDefault) e.evt.preventDefault();
     if (e.evt.button !== undefined && e.evt.button !== 0) return;
+
+    const stage = e.target.getStage();
+    const pos = stage?.getPointerPosition();
+
+    if (pos && (tool === 'playerHome' || tool === 'playerAway' || tool === 'ball' || tool === 'text')) {
+      setSuppressNextStageClick(true);
+      addItemAtPosition(pos);
+      return;
+    }
+
     handleStageDrawStart(e);
   };
 
@@ -1212,10 +1236,10 @@ const App: React.FC = () => {
                   onMouseDown={handleStageMouseDown}
                   onMouseMove={handleStageMouseMove}
                   onMouseUp={handleStageMouseUp}
-                  onTouchStart={handleStageMouseDown}
-                  onTouchMove={handleStageMouseMove}
-                  onTouchEnd={handleStageMouseUp}
-                  style={{ border: '1px solid #cfd8dc', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', background: '#f3f5f8' }}
+                  onPointerDown={handleStageMouseDown}
+                  onPointerMove={handleStageMouseMove}
+                  onPointerUp={handleStageMouseUp}
+                  style={{ border: '1px solid #cfd8dc', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', background: '#f3f5f8', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
                 >
                   <Layer>
                     <Rect x={0} y={pitchHeight} width={benchWidth} height={benchHeight} fill="#f4f4f4" />
