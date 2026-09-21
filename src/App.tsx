@@ -234,15 +234,15 @@ const App: React.FC = () => {
     setNewProjectForm({
       title: '',
       homePlayers: [
-        { id: 'player-1', x: 100, y: 250, number: 1, team: 'home', name: '選手1', role: 'GK' },
-        { id: 'player-2', x: 220, y: 110, number: 2, team: 'home', name: '選手2', role: 'LSB' },
-        { id: 'player-3', x: 220, y: 190, number: 3, team: 'home', name: '選手3', role: 'CB' },
-        { id: 'player-4', x: 220, y: 310, number: 4, team: 'home', name: '選手4', role: 'CB' },
-        { id: 'player-5', x: 220, y: 390, number: 5, team: 'home', name: '選手5', role: 'RSB' },
-        { id: 'player-6', x: 360, y: 190, number: 6, team: 'home', name: '選手6', role: 'DMF' },
-        { id: 'player-7', x: 360, y: 310, number: 7, team: 'home', name: '選手7', role: 'DMF' },
-        { id: 'player-8', x: 360, y: 110, number: 8, team: 'home', name: '選手8', role: 'LMF' },
-        { id: 'player-9', x: 360, y: 390, number: 9, team: 'home', name: '選手9', role: 'RMF' },
+        { id: 'player-1', x: 35, y: 250, number: 1, team: 'home', name: '選手1', role: 'GK' },
+        { id: 'player-2', x: 180, y: 70, number: 2, team: 'home', name: '選手2', role: 'LSB' },
+        { id: 'player-3', x: 180, y: 170, number: 3, team: 'home', name: '選手3', role: 'CB' },
+        { id: 'player-4', x: 180, y: 330, number: 4, team: 'home', name: '選手4', role: 'CB' },
+        { id: 'player-5', x: 180, y: 430, number: 5, team: 'home', name: '選手5', role: 'RSB' },
+        { id: 'player-6', x: 360, y: 170, number: 6, team: 'home', name: '選手6', role: 'DMF' },
+        { id: 'player-7', x: 360, y: 330, number: 7, team: 'home', name: '選手7', role: 'DMF' },
+        { id: 'player-8', x: 360, y: 70, number: 8, team: 'home', name: '選手8', role: 'LMF' },
+        { id: 'player-9', x: 360, y: 430, number: 9, team: 'home', name: '選手9', role: 'RMF' },
         { id: 'player-10', x: 520, y: 170, number: 10, team: 'home', name: '選手10', role: 'FW' },
         { id: 'player-11', x: 520, y: 330, number: 11, team: 'home', name: '選手11', role: 'FW' },
         { id: 'player-27', x: 80, y: pitchHeight + 30, number: 12, team: 'home', name: '選手12', role: '控え' },
@@ -257,22 +257,19 @@ const App: React.FC = () => {
         { id: 'player-36', x: 320, y: pitchHeight + 70, number: 21, team: 'home', name: '選手21', role: '控え' },
         { id: 'player-37', x: 80, y: pitchHeight + 110, number: 22, team: 'home', name: '選手22', role: '控え' },
         { id: 'player-38', x: 140, y: pitchHeight + 110, number: 23, team: 'home', name: '選手23', role: '控え' },
-        { id: 'player-39', x: 200, y: pitchHeight + 110, number: 24, team: 'home', name: '選手24', role: '控え' },
-        { id: 'player-40', x: 260, y: pitchHeight + 110, number: 25, team: 'home', name: '選手25', role: '控え' },
-        { id: 'player-41', x: 320, y: pitchHeight + 110, number: 26, team: 'home', name: '選手26', role: '控え' },
       ],
       awayPlayers: [
-        { id: 'player-12', x: 700, y: 250, number: 1, team: 'away', name: '選手1', role: 'GK' },
-        { id: 'player-13', x: 580, y: 110, number: 2, team: 'away', name: '選手2', role: 'LSB' },
-        { id: 'player-14', x: 580, y: 190, number: 3, team: 'away', name: '選手3', role: 'CB' },
-        { id: 'player-15', x: 580, y: 310, number: 4, team: 'away', name: '選手4', role: 'CB' },
-        { id: 'player-16', x: 580, y: 390, number: 5, team: 'away', name: '選手5', role: 'RSB' },
-        { id: 'player-17', x: 440, y: 190, number: 6, team: 'away', name: '選手6', role: 'DMF' },
-        { id: 'player-18', x: 440, y: 310, number: 7, team: 'away', name: '選手7', role: 'DMF' },
-        { id: 'player-19', x: 440, y: 110, number: 8, team: 'away', name: '選手8', role: 'LMF' },
-        { id: 'player-20', x: 440, y: 390, number: 9, team: 'away', name: '選手9', role: 'RMF' },
-        { id: 'player-21', x: 280, y: 170, number: 10, team: 'away', name: '選手10', role: 'FW' },
-        { id: 'player-22', x: 280, y: 330, number: 11, team: 'away', name: '選手11', role: 'FW' },
+        { id: 'player-12', x: 765, y: 250, number: 1, team: 'away', name: '選手1', role: 'GK' },
+        { id: 'player-13', x: 620, y: 430, number: 2, team: 'away', name: '選手2', role: 'LSB' },
+        { id: 'player-14', x: 620, y: 330, number: 3, team: 'away', name: '選手3', role: 'CB' },
+        { id: 'player-15', x: 620, y: 170, number: 4, team: 'away', name: '選手4', role: 'CB' },
+        { id: 'player-16', x: 620, y: 70, number: 5, team: 'away', name: '選手5', role: 'RSB' },
+        { id: 'player-17', x: 440, y: 330, number: 6, team: 'away', name: '選手6', role: 'DMF' },
+        { id: 'player-18', x: 440, y: 170, number: 7, team: 'away', name: '選手7', role: 'DMF' },
+        { id: 'player-19', x: 440, y: 430, number: 8, team: 'away', name: '選手8', role: 'LMF' },
+        { id: 'player-20', x: 440, y: 70, number: 9, team: 'away', name: '選手9', role: 'RMF' },
+        { id: 'player-21', x: 280, y: 330, number: 10, team: 'away', name: '選手10', role: 'FW' },
+        { id: 'player-22', x: 280, y: 170, number: 11, team: 'away', name: '選手11', role: 'FW' },
         { id: 'player-42', x: 480, y: pitchHeight + 30, number: 12, team: 'away', name: '選手12', role: '控え' },
         { id: 'player-43', x: 540, y: pitchHeight + 30, number: 13, team: 'away', name: '選手13', role: '控え' },
         { id: 'player-44', x: 600, y: pitchHeight + 30, number: 14, team: 'away', name: '選手14', role: '控え' },
@@ -285,9 +282,6 @@ const App: React.FC = () => {
         { id: 'player-51', x: 720, y: pitchHeight + 70, number: 21, team: 'away', name: '選手21', role: '控え' },
         { id: 'player-52', x: 480, y: pitchHeight + 110, number: 22, team: 'away', name: '選手22', role: '控え' },
         { id: 'player-53', x: 540, y: pitchHeight + 110, number: 23, team: 'away', name: '選手23', role: '控え' },
-        { id: 'player-54', x: 600, y: pitchHeight + 110, number: 24, team: 'away', name: '選手24', role: '控え' },
-        { id: 'player-55', x: 660, y: pitchHeight + 110, number: 25, team: 'away', name: '選手25', role: '控え' },
-        { id: 'player-56', x: 720, y: pitchHeight + 110, number: 26, team: 'away', name: '選手26', role: '控え' },
       ],
     });
   };
@@ -380,6 +374,16 @@ const App: React.FC = () => {
     setSelectedItems([]);
     setDragGroupPositions(null);
     setPreviousState(null);
+  };
+
+  const handleProjectTitleChange = (value: string) => {
+    setProjectTitle(value);
+    if (currentProject) {
+      setCurrentProject({
+        ...currentProject,
+        title: value,
+      });
+    }
   };
 
   const buildProjectSnapshot = (): Project | null => {
@@ -944,7 +948,24 @@ const App: React.FC = () => {
           <aside style={{ width: 260, background: '#141414', color: '#fff', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', minHeight: '100%' }}>
             <div>
               <div style={{ fontSize: '12px', color: '#9fa2ae', letterSpacing: '0.12em' }}>PROJECT</div>
-              <div style={{ marginTop: '10px', fontSize: '20px', fontWeight: 700 }}>{projectTitle || '無題のプロジェクト'}</div>
+              <input
+                type="text"
+                value={projectTitle}
+                onChange={(e) => handleProjectTitleChange(e.target.value)}
+                placeholder="無題のプロジェクト"
+                style={{
+                  width: '100%',
+                  marginTop: '10px',
+                  padding: '10px 12px',
+                  fontSize: '20px',
+                  fontWeight: 700,
+                  color: '#ffffff',
+                  background: '#1f1f1f',
+                  border: '1px solid #3a3a3a',
+                  borderRadius: '10px',
+                  boxSizing: 'border-box',
+                }}
+              />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <button onClick={() => setSidebarTab('tools')} style={{ width: '100%', padding: '8px', border: 'none', borderRadius: '8px', background: sidebarTab === 'tools' ? '#4a4a4a' : '#1f1f1f', color: '#fff', cursor: 'pointer' }}>操作</button>
@@ -1204,7 +1225,10 @@ const App: React.FC = () => {
                     <Line points={[0, stageHeight, benchWidth, stageHeight]} stroke="#b0b0b0" strokeWidth={2} />
                     <Text x={12} y={pitchHeight + 10} text="控えエリア" fontSize={14} fill="#333333" />
                     <Rect x={0} y={0} width={pitchWidth} height={pitchHeight} fill={pitchColor} />
-                    <Line points={[0, 0, pitchWidth, 0, pitchWidth, pitchHeight, 0, pitchHeight, 0, 0]} stroke={lineColor} strokeWidth={4} closed />
+                    <Line points={[0, 1, pitchWidth, 1]} stroke={lineColor} strokeWidth={4} />
+                    <Line points={[pitchWidth - 1, 0, pitchWidth - 1, pitchHeight]} stroke={lineColor} strokeWidth={4} />
+                    <Line points={[0, pitchHeight - 1, pitchWidth, pitchHeight - 1]} stroke={lineColor} strokeWidth={4} />
+                    <Line points={[1, 0, 1, pitchHeight]} stroke={lineColor} strokeWidth={4} />
                     <Line points={[pitchWidth / 2, 0, pitchWidth / 2, pitchHeight]} stroke={lineColor} strokeWidth={3} />
                     <Circle x={pitchWidth / 2} y={pitchHeight / 2} radius={80} stroke={lineColor} strokeWidth={3} />
                     <Circle x={pitchWidth / 2} y={pitchHeight / 2} radius={4} fill={lineColor} />
@@ -1244,6 +1268,44 @@ const App: React.FC = () => {
                       strokeWidth={3}
                       fillEnabled={false}
                     />
+                    {(() => {
+                      const goalAreaTop = (pitchHeight - 320) / 2;
+                      const goalAreaBottom = goalAreaTop + 320;
+                      const penaltyAreaTop = (pitchHeight - 180) / 2;
+                      const penaltyAreaBottom = penaltyAreaTop + 180;
+                      return (
+                        <>
+                          <Line
+                            points={[0, goalAreaTop, pitchWidth, goalAreaTop]}
+                            stroke={lineColor}
+                            strokeWidth={1}
+                            dash={[6, 6]}
+                            opacity={0.35}
+                          />
+                          <Line
+                            points={[0, goalAreaBottom, pitchWidth, goalAreaBottom]}
+                            stroke={lineColor}
+                            strokeWidth={1}
+                            dash={[6, 6]}
+                            opacity={0.35}
+                          />
+                          <Line
+                            points={[0, penaltyAreaTop, pitchWidth, penaltyAreaTop]}
+                            stroke={lineColor}
+                            strokeWidth={1}
+                            dash={[6, 6]}
+                            opacity={0.35}
+                          />
+                          <Line
+                            points={[0, penaltyAreaBottom, pitchWidth, penaltyAreaBottom]}
+                            stroke={lineColor}
+                            strokeWidth={1}
+                            dash={[6, 6]}
+                            opacity={0.35}
+                          />
+                        </>
+                      );
+                    })()}
                     <Circle x={120} y={pitchHeight / 2} radius={4} fill={lineColor} />
                     <Circle x={pitchWidth - 120} y={pitchHeight / 2} radius={4} fill={lineColor} />
                     <Line
@@ -1320,10 +1382,10 @@ const App: React.FC = () => {
                         <Circle
                           x={player.x}
                           y={player.y}
-                          radius={20}
+                          radius={16}
                           fill={player.color}
                           stroke={player.isSelected ? '#d32f2f' : '#ffffff'}
-                          strokeWidth={player.isSelected ? 4 : 1.5}
+                          strokeWidth={player.isSelected ? 3 : 1.2}
                           draggable
                           onClick={(e) => handleSelectItem(e, 'player', player.id)}
                           onDblClick={(e) => {
@@ -1339,12 +1401,13 @@ const App: React.FC = () => {
                           onDragEnd={(e) => handlePlayerDragEnd(player.id, e)}
                         />
                         <Text
-                          x={player.x - 20}
-                          y={player.y - 20}
-                          width={40}
-                          height={40}
+                          x={player.x - 16}
+                          y={player.y - 13}
+                          width={32}
+                          height={26}
                           text={player.number.toString()}
-                          fontSize={14}
+                          fontSize={11}
+                          fontStyle="bold"
                           fill={playerNumberColor}
                           align="center"
                           verticalAlign="middle"
