@@ -813,13 +813,14 @@ const App: React.FC = () => {
   };
 
   const handleStageMouseDown = (e: Konva.KonvaEventObject<any>) => {
-    if (e.evt.preventDefault) e.evt.preventDefault();
+    const isTouchPointer = e.evt.pointerType === 'touch' || String(e.evt.type).startsWith('touch');
+    if (isTouchPointer && e.evt.preventDefault) e.evt.preventDefault();
     if (e.evt.button !== undefined && e.evt.button !== 0) return;
 
     const stage = e.target.getStage();
     const pos = stage?.getPointerPosition();
 
-    if (pos && (tool === 'playerHome' || tool === 'playerAway' || tool === 'ball' || tool === 'text')) {
+    if (isTouchPointer && pos && (tool === 'playerHome' || tool === 'playerAway' || tool === 'ball' || tool === 'text')) {
       setSuppressNextStageClick(true);
       addItemAtPosition(pos);
       return;
